@@ -90,9 +90,12 @@ app::Order input_order() {
 }
 
 void print_orders(const std::vector<app::Order> &orders) {
-  for (const auto &o : orders)
-    std::cout << "ID: " << o.id << ";\tCARGO TYPE: " << o.cargo_type
-              << ";\tCOMPOSITE SCORE: " << o.composite_score << ";\n";
+  size_t i = 0;
+  for (const auto &o : orders) {
+    ++i;
+    std::cout << i << "\t" << "ID: " << o.id << "; CARGO TYPE: " << o.cargo_type
+              << "; COMPOSITE SCORE: " << o.composite_score << ";\n";
+  }
 }
 
 struct BenchResult {
