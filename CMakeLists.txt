@@ -23,10 +23,21 @@ elseif(MSVC)
   target_compile_options(sqlite3 PRIVATE /W0)
 endif()
 
-# Зависимости SQLite: потоки везде, dl + m на Unix (на Windows/MinGW не нужны).
+# sqlite3.c — амальгама на 9.5 МБ: с -O3 в Release собирается минутами
+# (видимое "зависание" на 16%). Для малых объёмов БД достаточно -O1.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+  target_compile_options(sqlite3 PRIVATE
+                         $<$<CONFIG:Release,RelWithDebInfo>:-O1>)
+elseif(MSVC)
+  target_compile_options(sqlite3 PRIVATE
+                         $<$<CONFIG:Release,RelWithDebInfo>:/O1>)
+endif()
+
+# Зависимости SQLite: потоки везде, dl + m только на настоящем Unix (не
+# Windows/MinGW).
 find_package(Threads REQUIRED)
 target_link_libraries(sqlite3 PUBLIC Threads::Threads)
-if(UNIX)
+if(UNIX AND NOT WIN32)
   target_link_libraries(sqlite3 PUBLIC ${CMAKE_DL_LIBS})
   target_link_libraries(sqlite3 PUBLIC m)
 endif()
@@ -45,3 +56,11 @@ target_sources(AlgoritmsCpp PRIVATE ${SOURCES} ${HEADERS})
 target_include_directories(AlgoritmsCpp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_link_libraries(AlgoritmsCpp PRIVATE sqlite3)
+
+# Статичный exe для Windows/MinGW: запуск без libgcc_s_seh-1.dll,
+# libstdc++-6.dll, libwinpthread-1.dll, без VCRedist и Visual Studio.
+# Зависимости остаются только на системные KERNEL32/msvcrt.dll.
+if(MINGW)
+  target_link_options(AlgoritmsCpp PRIVATE -static -static-libgcc
+                      -static-libstdc++)
+endif()

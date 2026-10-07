@@ -35,7 +35,7 @@ void consume_line() {
 std::string read_cargo_type() {
   std::string s;
   while (true) {
-    std::cout << "cargo_type (1-50 символов): ";
+    std::cout << "cargo_type (1-50 characters): ";
     if (!std::getline(std::cin, s)) {
       std::cin.clear();
       continue;
@@ -43,7 +43,7 @@ std::string read_cargo_type() {
     if (!s.empty() && s.back() == '\r')
       s.pop_back();
     if (s.empty() || s.size() > 50) {
-      std::cout << "Ошибка: длина 1-50 символов.\n";
+      std::cout << "Error: length must be 1-50 characters.\n";
       continue;
     }
     return s;
@@ -58,7 +58,7 @@ double read_double(const char *prompt) {
       consume_line();
       return v;
     }
-    std::cout << "Ошибка: введите число.\n";
+    std::cout << "Error: enter a number.\n";
     std::cin.clear();
     consume_line();
   }
@@ -72,7 +72,7 @@ int read_int(const char *prompt) {
       consume_line();
       return v;
     }
-    std::cout << "Ошибка: введите целое число.\n";
+    std::cout << "Error: enter an integer.\n";
     std::cin.clear();
     consume_line();
   }
@@ -130,13 +130,13 @@ std::vector<BenchResult> bench_all(const app::Sorter &sorter) {
 }
 
 void print_bench(const std::vector<BenchResult> &results) {
-  std::cout << "--- Время сортировки (мкс) ---\n";
+  std::cout << "--- Sorting time (us) ---\n";
   for (const auto &r : results)
     std::cout << r.name << ": " << r.micros << " us\n";
 }
 
 void print_menu() {
-  std::cout << "\n--- Меню ---\n"
+  std::cout << "\n--- Menu ---\n"
                "1. bubble_sort\n"
                "2. selection_sort\n"
                "3. insertion_sort\n"
@@ -144,18 +144,18 @@ void print_menu() {
                "5. quick_sort\n"
                "6. merge_sort\n"
                "7. heap_sort\n"
-               "8. Показать время всех сортировок\n"
-               "9. Создать запись в модели Order\n"
-               "10. Очистить экран\n"
-               "0. Выход\n"
-               "Выбор: ";
+               "8. Show all sorting times\n"
+               "9. Create Order record\n"
+               "10. Clear screen\n"
+               "0. Exit\n"
+               "Choice: ";
 }
 
 bool refresh_from_db(const app::OrderRepository &repo, app::Sorter &sorter,
                      std::vector<BenchResult> &results) {
   auto fresh = repo.find_all();
   if (!fresh) {
-    std::cerr << " Ошибка получения записей из БД: " << fresh.error() << '\n';
+    std::cerr << " Failed to load records from DB: " << fresh.error() << '\n';
     return false;
   }
   sorter = app::Sorter(*fresh);
@@ -166,27 +166,26 @@ bool refresh_from_db(const app::OrderRepository &repo, app::Sorter &sorter,
 } // namespace
 
 int main(int argc, char *argv[]) {
-  setlocale(LC_ALL, "ru");
   // Открываем БД
   auto repo_res = app::OrderRepository::open("orders.db");
   if (!repo_res) {
-    std::cerr << " Ошибка подключения к БД: " << repo_res.error() << '\n';
+    std::cerr << " DB connection error: " << repo_res.error() << '\n';
     return 1;
   }
   app::OrderRepository repo = std::move(*repo_res);
   // Создаем схему
   if (auto init_res = repo.init_schema(); !init_res) {
-    std::cerr << " Ошибка инициализации схемы: " << init_res.error() << '\n';
+    std::cerr << " Schema init error: " << init_res.error() << '\n';
     return 1;
   }
   // Находим все записи
   auto orders = repo.find_all();
   if (!orders) {
-    std::cerr << " Ошибка получения записей из БД: " << orders.error() << '\n';
+    std::cerr << " Failed to load records from DB: " << orders.error() << '\n';
     return 1;
   }
   if (orders->empty())
-    std::cout << "В таблице orders нет записей.\n";
+    std::cout << "Table orders is empty.\n";
 
   // Создаем сортировщик
   app::Sorter sorter(std::move(*orders));
@@ -214,19 +213,19 @@ int main(int argc, char *argv[]) {
       results = bench_all(sorter);
       print_bench(results);
     } else if (choice == 9) {
-      std::cout << "--- Создание Order (id назначается БД) ---\n";
+      std::cout << "--- Create Order (id assigned by DB) ---\n";
       app::Order o = input_order();
       if (auto s = repo.save(o); !s) {
-        std::cerr << " Ошибка сохранения: " << s.error() << '\n';
+        std::cerr << " Save error: " << s.error() << '\n';
       } else if (refresh_from_db(repo, sorter, results)) {
-        std::cout << "Order сохранён. Всего записей: " << sorter.orders().size()
+        std::cout << "Order saved. Total records: " << sorter.orders().size()
                   << '\n';
         print_bench(results);
       }
     } else if (choice == 10) {
       clear_screen();
     } else if (choice != 0) {
-      std::cout << "Неверный пункт.\n";
+      std::cout << "Invalid choice.\n";
     }
   } while (choice != 0);
 

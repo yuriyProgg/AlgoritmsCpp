@@ -10,15 +10,15 @@ class Sorter {
 public:
   explicit Sorter(std::vector<Order> orders);
 
-  // Доступ к текущему состоюнию вектора
+  // Доступ к текущему состоянию вектора
   [[nodiscard]] const std::vector<Order> &orders() const noexcept;
 
-  // Медленные алогоритмы O(n^2)
+  // Медленные алгоритмы O(n^2)
   [[nodiscard]] std::vector<Order> bubble_sort() const;
   [[nodiscard]] std::vector<Order> selection_sort() const;
   [[nodiscard]] std::vector<Order> insertion_sort() const;
 
-  // Среднее алгоритмы O(n)
+  // Средние алгоритмы O(n)
   [[nodiscard]] std::vector<Order> shell_sort() const;
 
   // Быстрые алгоритмы O(n log n)
