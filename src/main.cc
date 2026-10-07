@@ -166,6 +166,7 @@ bool refresh_from_db(const app::OrderRepository &repo, app::Sorter &sorter,
 } // namespace
 
 int main(int argc, char *argv[]) {
+  setlocale(LC_ALL, "ru");
   // Открываем БД
   auto repo_res = app::OrderRepository::open("orders.db");
   if (!repo_res) {
