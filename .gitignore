@@ -1,3 +1,5 @@
 build
 orders.db
 .cache
+CMakeFiles/
+CMakeCache.txt
