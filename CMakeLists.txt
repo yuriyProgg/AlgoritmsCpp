@@ -23,14 +23,14 @@ elseif(MSVC)
   target_compile_options(sqlite3 PRIVATE /W0)
 endif()
 
-# sqlite3.c — амальгама на 9.5 МБ: с -O3 в Release собирается минутами
-# (видимое "зависание" на 16%). Для малых объёмов БД достаточно -O1.
+# sqlite3.c — амальгама на 9.5 МБ: с -O3 в Release собирается минутами (видимое
+# "зависание" на 16%). Для малых объёмов БД достаточно -O1.
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
-  target_compile_options(sqlite3 PRIVATE
-                         $<$<CONFIG:Release,RelWithDebInfo>:-O1>)
+  target_compile_options(sqlite3
+                         PRIVATE $<$<CONFIG:Release,RelWithDebInfo>:-O1>)
 elseif(MSVC)
-  target_compile_options(sqlite3 PRIVATE
-                         $<$<CONFIG:Release,RelWithDebInfo>:/O1>)
+  target_compile_options(sqlite3
+                         PRIVATE $<$<CONFIG:Release,RelWithDebInfo>:/O1>)
 endif()
 
 # Зависимости SQLite: потоки везде, dl + m только на настоящем Unix (не
@@ -48,12 +48,11 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc")
 list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cc")
 
-add_executable(AlgoritmsCpp src/main.cc)
+add_executable(AlgoritmsCpp "${PROJECT_SOURCE_DIR}/src/main.cc")
 
 target_sources(AlgoritmsCpp PRIVATE ${SOURCES} ${HEADERS})
 
-# Позволяет писать #include "src/folder/file.h" из любой точки проекта
-target_include_directories(AlgoritmsCpp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(AlgoritmsCpp PRIVATE "${PROJECT_SOURCE_DIR}")
 
 target_link_libraries(AlgoritmsCpp PRIVATE sqlite3)
 

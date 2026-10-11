@@ -4,6 +4,7 @@
 #include <memory>
 #include <sqlite3.h>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace app {

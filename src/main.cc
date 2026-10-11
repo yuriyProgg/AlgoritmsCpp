@@ -6,8 +6,8 @@
  * GitHub: https://github.com/yuriyProgg
  * */
 
-#include "algoritms.h"
-#include "database.h"
+#include "src/algoritms/sorter.h"
+#include "src/storage/database.h"
 #include <chrono>
 #include <clocale>
 #include <cmath>
