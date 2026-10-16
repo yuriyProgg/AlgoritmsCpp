@@ -1,54 +1,130 @@
-import { SORT_ALGOS, SORT_GROUPS } from '../data/algorithms.ts'
-import AlgoCard from '../components/AlgoCard.tsx'
+import { useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { SORT_ALGOS } from "../data/algorithms.ts";
+import type { SortAlgo } from "../data/algorithms.ts";
+import { MOCK_ORDERS } from "../data/sortOptions.ts";
+import type { AppliedInfo, CompareRow, Order, SortMethodName } from "../types/sort.ts";
+import { isSortMethodName } from "../types/sort.ts";
+import { cloneOrders } from "../utils/sortUtils.ts";
+import { runLocalSort } from "../utils/sorts.ts";
+import { useSorterBackend } from "../hooks/useSorterBackend.ts";
+import { useSelectionViz } from "../hooks/useSelectionViz.ts";
+import SortHeader from "../components/sort/SortHeader.tsx";
+import SelectionViz from "../components/sort/SelectionViz.tsx";
+import AlgoGroups from "../components/sort/AlgoGroups.tsx";
+import SortReport from "../components/sort/SortReport.tsx";
+import OrdersTable from "../components/sort/OrdersTable.tsx";
 
 export default function SortPage() {
+  const [orders, setOrders] = useState<Order[]>(() => cloneOrders(MOCK_ORDERS));
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [applied, setApplied] = useState<AppliedInfo | null>(null);
+  const [comparison, setComparison] = useState<CompareRow[] | null>(null);
+
+  const viz = useSelectionViz(orders, setOrders);
+  const pendingRef = useRef<{ id: string; title: string } | null>(null);
+  const backend = useSorterBackend((next: Order[]) => {
+    setOrders(next);
+    viz.resetToStart();
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending !== null) {
+      setApplied({
+        methodId: pending.id,
+        title: pending.title,
+        source: "C++",
+        comparisons: null,
+        swaps: null,
+        timeMs: null,
+      });
+    }
+  });
+
+  const applyLocal = (algo: SortAlgo, method: SortMethodName): void => {
+    const result = runLocalSort(orders, method, viz.sortKey, viz.direction);
+    setOrders(result.sorted);
+    viz.resetToStart();
+    setApplied({
+      methodId: algo.id,
+      title: algo.title,
+      source: "локально (JS)",
+      comparisons: result.comparisons,
+      swaps: result.swaps,
+      timeMs: result.timeMs,
+    });
+  };
+
+  const handleSelectAlgo = (algo: SortAlgo): void => {
+    const method: string = algo.method;
+    if (!isSortMethodName(method)) return;
+    if (algo.id === "selection") {
+      viz.startFromTop();
+      return;
+    }
+    pendingRef.current = { id: algo.id, title: algo.title };
+    backend.runMethod(method, algo.id, () => {
+      pendingRef.current = null;
+      applyLocal(algo, method);
+    });
+  };
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleCompareAll = (): void => {
+    pendingRef.current = null;
+    const rows: CompareRow[] = [];
+    for (const algo of SORT_ALGOS) {
+      if (!isSortMethodName(algo.method)) continue;
+      const result = runLocalSort(orders, algo.method, viz.sortKey, viz.direction);
+      rows.push({
+        methodId: algo.id,
+        title: algo.title,
+        complexity: algo.complexity,
+        timeMs: result.timeMs,
+        comparisons: result.comparisons,
+        swaps: result.swaps,
+      });
+    }
+    setComparison(rows);
+    const quick = runLocalSort(orders, "quick_sort", viz.sortKey, viz.direction);
+    setOrders(quick.sorted);
+    viz.resetToStart();
+    setApplied({
+      methodId: "quick",
+      title: "Быстрая",
+      source: "локально (JS)",
+      comparisons: quick.comparisons,
+      swaps: quick.swaps,
+      timeMs: quick.timeMs,
+    });
+  };
+
+  const filteredOrders: Order[] = useMemo(() => {
+    const q: string = searchQuery.trim().toLowerCase();
+    const source: Order[] = viz.current?.snapshot ?? orders;
+    if (q.length === 0) return source;
+    return source.filter(
+      (o) => o.cargo_type.toLowerCase().includes(q) || o.id.toString().includes(q),
+    );
+  }, [searchQuery, viz.current, orders]);
+
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-gradient-to-br from-violet-500/10 via-white to-fuchsia-500/10 p-6 dark:border-zinc-800 dark:from-violet-500/15 dark:via-zinc-900 dark:to-fuchsia-500/10">
-        <h1 className="text-2xl font-bold tracking-tight">Сортировки</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-          7 методов класса <code className="font-mono">app::Sorter</code>. Панель ниже — только каркас, без логики.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-sm backdrop-blur transition hover:scale-105 dark:border-zinc-700 dark:bg-zinc-900">
-            Заказов: 25
-          </span>
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 font-mono text-sm backdrop-blur transition hover:scale-105 dark:border-zinc-700 dark:bg-zinc-900">
-            dataset: Order[]
-          </span>
-          <input
-            placeholder="Поиск по списку…"
-            className="min-w-40 flex-1 rounded-full border border-zinc-200 bg-white/70 px-3 py-1.5 text-sm outline-none backdrop-blur transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-          <button
-            type="button"
-            className="rounded-full bg-violet-600 px-4 py-1.5 text-sm font-medium text-white shadow-lg shadow-violet-600/25 transition-all duration-300 hover:bg-violet-500 hover:shadow-violet-500/40 active:scale-95"
-          >
-            Сравнить все
-          </button>
-        </div>
-      </section>
-
-      {SORT_GROUPS.map((group) => {
-        const items = SORT_ALGOS.filter((a) => a.group === group.id)
-        return (
-          <section key={group.id}>
-            <div className="mb-3 flex items-center gap-2">
-              <h2 className="font-semibold tracking-tight">{group.title}</h2>
-              <span className="rounded-full bg-zinc-900 px-2 py-0.5 font-mono text-[11px] text-white dark:bg-white dark:text-zinc-900">
-                {group.badge}
-              </span>
-              <span className="h-px flex-1 bg-gradient-to-r from-zinc-200 to-transparent dark:from-zinc-800" />
-              <span className="text-xs text-zinc-400">{items.length}</span>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((algo, i) => (
-                <AlgoCard key={algo.id} algo={algo} index={i} />
-              ))}
-            </div>
-          </section>
-        )
-      })}
+      <SortHeader
+        ordersCount={orders.length}
+        searchQuery={searchQuery}
+        backendReady={backend.backendReady}
+        backendError={backend.backendError}
+        loadingAlgo={backend.loadingAlgo}
+        onSearchChange={handleSearchChange}
+        onCompareAll={handleCompareAll}
+      />
+      <SelectionViz viz={viz} />
+      <AlgoGroups activeId="selection" onSelectAlgo={handleSelectAlgo} />
+      <SortReport applied={applied} comparison={comparison} />
+      <OrdersTable orders={filteredOrders} />
     </div>
-  )
+  );
 }
